@@ -1,0 +1,64 @@
+version: '3.4'
+
+services:
+  dispatcher:
+    image: "gitlab.spark-dev.team:5050/spark/services/backend/dispatcher:latest"
+    env_file:
+      - .env
+    networks:
+      - proxy
+    deploy:
+      restart_policy:
+        max_attempts: 3
+        delay: 10s
+      mode: replicated
+      replicas: 2
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 256M
+      update_config:
+        parallelism: 1
+        max_failure_ratio: 0
+        failure_action: rollback
+        order: start-first
+        monitor: 30s
+        delay: 10s
+    environment:
+      - APP_DOMAIN=dispatcher.spark.kz
+      - VIRTUAL_PROTO=fastcgi
+      - CERT_NAME=spark_kz
+      - NETWORK_ACCESS=internal
+    expose:
+      - 9000
+
+  dispatcher-worker:
+    image: "gitlab.spark-dev.team:5050/spark/services/backend/dispatcher/worker:latest"
+    env_file:
+      - .env
+    networks:
+      - proxy
+    deploy:
+      restart_policy:
+        max_attempts: 3
+        delay: 10s
+      mode: replicated
+      replicas: 2
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 512M
+      update_config:
+        parallelism: 1
+        max_failure_ratio: 0
+        failure_action: rollback
+        order: start-first
+        monitor: 30s
+        delay: 10s
+
+
+networks:
+  proxy:
+    external: true

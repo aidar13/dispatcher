@@ -1,0 +1,3 @@
+include:
+  - project: 'spark/ci-templates/ci-cd-deploy-dev'
+    file: '.gitlab-ci.yml'

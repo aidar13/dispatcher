@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "php-fpm.fullname" . }}-cli
+  labels:
+    {{ include "php-fpm.labels" . | nindent 4 }}-cli
+spec:
+  replicas: {{ .Values.cli.replicaCount }}
+  {{- if .Values.cli.rollingUpdate }}
+  strategy:
+    rollingUpdate:
+      maxSurge: {{ .Values.cli.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.cli.rollingUpdate.maxUnavailable }}
+    type: RollingUpdate
+  {{- else }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "php-fpm.name" . }}-cli
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "php-fpm.name" . }}-cli
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      {{- with .Values.cli.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.cli.image.name }}"
+          imagePullPolicy: {{ .Values.cli.image.pullPolicy }}
+          env:
+          {{- range $name, $value := .Values.env.open }}
+          {{- if not (empty $value) }}
+            - name: {{ $name | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          {{- $secret_name := include "php-fpm.fullname" . }}
+          {{- range $name, $value := .Values.env.secret }}
+          {{- if not (empty $value) }}
+            - name: {{ $name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret_name }}
+                  key: {{ $name | quote }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.cli.service.targetPort }}
+              protocol: TCP
+          {{ if (or .Values.cli.livenessProbe .Values.cli.readinessProbe) }}
+          livenessProbe:
+            {{- toYaml .Values.cli.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.cli.readinessProbe | nindent 12 }}
+          {{- else -}}
+          livenessProbe:
+            failureThreshold: 10
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            successThreshold: 1
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -fl 'php /srv/www/app/artisan queue:work redis' || exit 1"
+            timeoutSeconds: 3
+          readinessProbe:
+            failureThreshold: 10
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            successThreshold: 1
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -fl 'php /srv/www/app/artisan queue:work redis' || exit 1"
+          {{- end }}
+          resources:
+            {{- toYaml .Values.cli.resources | nindent 12 }}
+      {{- if .Values.cli.extraVolumeMounts }}
+      volumeMounts:
+        {{ toYaml .Values.cli.extraVolumeMounts | indent 8 }}
+      {{- end }}
+      {{- with .Values.cli.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.cli.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.cli.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.cli.extraVolumes }}
+      volumes:
+        {{ toYaml .Values.cli.extraVolumes | indent 6 }}
+      {{- end }}

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<project name="Template" default="start" description="Сервис Template" basedir=".">
+    <property file=".env"/>
+
+    <target name="start" description="Запуск приложения" depends="optimize, migrate, swagger"/>
+
+    <target name="optimize" description="Оптимизаця">
+        <exec command="php artisan optimize:clear" outputProperty="cmd_output"/>
+        <echo msg="Message: ${cmd_output}"/>
+    </target>
+
+    <target name="migrate" description="Применить миграцию">
+        <exec command="php artisan migrate --force" outputProperty="cmd_output"/>
+        <echo msg="Message: ${cmd_output}"/>
+    </target>
+
+    <target name="swagger" description="Сгенерировать open api документ">
+        <exec command="php artisan l5-swagger:generate" outputProperty="cmd_output"/>
+        <echo msg="Message: ${cmd_output}"/>
+    </target>
+</project>

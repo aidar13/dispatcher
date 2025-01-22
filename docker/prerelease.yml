@@ -1,0 +1,62 @@
+version: '3.4'
+
+services:
+  dispatcher:
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+    env_file:
+      - .env
+    networks:
+      - proxy
+    deploy:
+      restart_policy:
+        max_attempts: 3
+        delay: 10s
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+      update_config:
+        parallelism: 1
+        max_failure_ratio: 0
+        failure_action: rollback
+        order: start-first
+        monitor: 30s
+        delay: 10s
+    environment:
+      - APP_DOMAIN=dispatcher.spark-dev.team
+      - VIRTUAL_PROTO=fastcgi
+      - CERT_NAME=spark_dev_team
+    expose:
+      - 9000
+
+  dispatcher-worker:
+    image: ${IMAGE_NAME}/worker:${IMAGE_TAG}
+    env_file:
+      - .env
+    networks:
+      - proxy
+    deploy:
+      restart_policy:
+        max_attempts: 3
+        delay: 10s
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 128M
+      update_config:
+        parallelism: 1
+        max_failure_ratio: 0
+        failure_action: rollback
+        order: start-first
+        monitor: 30s
+        delay: 10s
+
+networks:
+  proxy:
+    external: true
